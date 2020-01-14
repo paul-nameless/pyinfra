@@ -37,20 +37,6 @@ def try_int(value):
         return value
 
 
-def ensure_host_list(hosts, inventory):
-    if hosts is None:
-        return hosts
-
-    # If passed a string, treat as group name and get any hosts from inventory
-    if isinstance(hosts, six.string_types):
-        return inventory.get_group(hosts, [])
-
-    if not isinstance(hosts, (list, tuple)):
-        return [hosts]
-
-    return hosts
-
-
 def memoize(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -143,34 +129,12 @@ def pop_global_op_kwargs(state, kwargs):
     Pop and return operation global keyword arguments.
     '''
 
-    for deprecated_key in ('when', 'hosts'):
-        if deprecated_key in kwargs:
-            logger.warning((
-                'Use of the `{0}` argument is deprecated, '
-                'please use normal `if` statements instead.'
-            ).format(deprecated_key))
-
     meta_kwargs = state.deploy_kwargs or {}
 
     def get_kwarg(key, default=None):
         return kwargs.pop(key, meta_kwargs.get(key, default))
 
-    # TODO: remove hosts/when
-    hosts = get_kwarg('hosts')
-    hosts = ensure_host_list(hosts, inventory=state.inventory)
-
-    # Filter out any hosts not in the meta kwargs (nested support)
-    if meta_kwargs.get('hosts') is not None:
-        hosts = [
-            host for host in hosts
-            if host in meta_kwargs['hosts']
-        ]
-
-    global_kwargs = {
-        'hosts': hosts,
-        'when': get_kwarg('when', True),
-    }
-    # TODO: end remove hosts/when block
+    global_kwargs = {}
 
     if 'stdin' in kwargs:
         show_stdin_global_warning()
